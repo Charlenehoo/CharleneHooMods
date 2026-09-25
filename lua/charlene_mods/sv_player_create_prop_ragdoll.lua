@@ -5,11 +5,11 @@ local log = include("charlene_mods/log.lua")
 
 local MODULE_NAME = "PlayerCreatePropRagdoll"
 
----@type table<Player, Entity?>
+---@type table<Player, Entity|nil>
 local plyToRagdollMap = {}
 
 ---@param ply Player
----@return Entity?
+---@return Entity|nil
 local function createPropRagdoll(ply)
     local model = ply:GetModel()
     if not model or not util.IsValidModel(model) then
