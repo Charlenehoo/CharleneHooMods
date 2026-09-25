@@ -26,20 +26,40 @@ local OutFile = nil                 -- nil = 不写文件; 相对 data/, 自动�
 local Fold = true                   -- 连续相同折叠
 local MaxTable = 3                  -- table 显示前几项
 
--- 领域标识（GMod 惯例：SERVER 蓝 / CLIENT 橙）
+-- 领域标识
 --   realmName  - 完整名，文件日志用
---   realmTag   - 小写短名 sv / cl，控制台用（与级别大写区分）
---   realmColor - 控制台表头颜色
+--   realmTag   - 小写短名 sv / cl，控制台用（与级别三字母区分）
+--   frameColors- 表头色板，按帧轮转，让不同帧的日志块视觉上分开
+--                GMod 惯例：SERVER 蓝 / CLIENT 橙
 local realmName = SERVER and "SERVER" or "CLIENT"
 local realmTag = SERVER and "sv" or "cl"
-local realmColor = SERVER and Color(80, 160, 255) -- 蓝
-    or Color(255, 165, 0)                         -- 橙
+local frameColors = SERVER
+    and { Color(80, 160, 255), Color(50, 110, 200) } -- 蓝（亮 / 暗）
+    or { Color(255, 165, 0), Color(200, 120, 0) }    -- 橙（亮 / 暗）
+
+-- ============================================================
+-- 帧色状态：同一 tick 内保持同色，tick 变化时轮转
+-- ============================================================
+
+local lastLogTick = -1
+local frameIndex = 0  -- 0 表示未初始化，首次切换后变为 1
+
+--- 取当前帧的表头颜色
+---@param tick integer
+---@return Color
+local function getFrameColor(tick)
+    if tick ~= lastLogTick then
+        lastLogTick = tick
+        frameIndex = frameIndex % #frameColors + 1
+    end
+    return frameColors[frameIndex]
+end
 
 -- ============================================================
 -- 级别定义表：以 LogLevel 枚举值为键
---   Tag   - 大写短标签，控制台与折叠签名用
+--   Tag   - 三字母标签，控制台与折叠签名用
 --   Label - 文件日志显示名，人工右对齐到 5 字符
---           （INFO / WARN 只有 4 字符，手动补前导空格）
+--           （完整单词，INFO / WARN 手动补前导空格）
 --   Color - 控制台正文颜色
 -- ============================================================
 
@@ -50,11 +70,11 @@ local realmColor = SERVER and Color(80, 160, 255) -- 蓝
 
 ---@type table<LogLevel, LevelDef>
 local levelDefs = {
-    [LogLevel.TRACE] = { Tag = "TRACE", Label = "TRACE", Color = Color(140, 140, 140) },
-    [LogLevel.DEBUG] = { Tag = "DEBUG", Label = "DEBUG", Color = Color(100, 200, 255) },
-    [LogLevel.INFO]  = { Tag = "INFO", Label = " INFO", Color = Color(200, 255, 200) },
-    [LogLevel.WARN]  = { Tag = "WARN", Label = " WARN", Color = Color(255, 220, 100) },
-    [LogLevel.ERROR] = { Tag = "ERROR", Label = "ERROR", Color = Color(255, 100, 100) },
+    [LogLevel.TRACE] = { Tag = "TRC", Label = "TRACE", Color = Color(140, 140, 140) },
+    [LogLevel.DEBUG] = { Tag = "DBG", Label = "DEBUG", Color = Color(100, 200, 255) },
+    [LogLevel.INFO]  = { Tag = "INF", Label = " INFO", Color = Color(200, 255, 200) },
+    [LogLevel.WARN]  = { Tag = "WRN", Label = " WARN", Color = Color(255, 220, 100) },
+    [LogLevel.ERROR] = { Tag = "ERR", Label = "ERROR", Color = Color(255, 100, 100) },
 }
 
 -- ============================================================
@@ -199,6 +219,7 @@ end
 -- ============================================================
 
 ---@class PendingEntry
+---@field HeaderColor Color
 ---@field LevelColor Color
 ---@field ConsoleHead string
 ---@field FileHead string
@@ -219,16 +240,17 @@ local function getOutfilePath()
     return path
 end
 
---- 控制台表头 = realmColor，正文 = levelColor
+--- 控制台表头 = headerColor（帧色），正文 = levelColor（级别色）
+---@param headerColor Color
 ---@param levelColor Color
 ---@param consoleHead string
 ---@param fileHead string
 ---@param text string
 ---@param count integer
-local function emitLine(levelColor, consoleHead, fileHead, text, count)
+local function emitLine(headerColor, levelColor, consoleHead, fileHead, text, count)
     local suffix = (count and count > 1) and (" x" .. count) or ""
 
-    MsgC(realmColor, consoleHead)
+    MsgC(headerColor, consoleHead)
     MsgC(levelColor, " " .. text .. suffix .. "\n")
 
     local path = getOutfilePath()
@@ -240,6 +262,7 @@ local function flushPending()
     local currentPending = pending
     pending = nil
     emitLine(
+        currentPending.HeaderColor,
         currentPending.LevelColor,
         currentPending.ConsoleHead,
         currentPending.FileHead,
@@ -271,9 +294,10 @@ local function logAt(level, ...)
     local source, line = findCaller()
     local shortSource = shortenSource(source)
     local tick = engine.TickCount() % 100000 -- 66 tick/s 下覆盖 ≈ 25 分钟
+    local headerColor = getFrameColor(tick)  -- 同帧同色，跨帧轮转
 
     -- 控制台 Header：时间 | 级别 | realm | 来源:行 | Tick
-    --   表头颜色 = realm，正文颜色 = 级别
+    --   表头颜色 = 帧色，正文颜色 = 级别
     local consoleHead = string.format("%s|%s|%s|%s:%d|%05d",
         formatTime(CurTime()),
         def.Tag,
@@ -291,7 +315,7 @@ local function logAt(level, ...)
         tick)
 
     if not Fold then
-        emitLine(def.Color, consoleHead, fileHead, text, 1)
+        emitLine(headerColor, def.Color, consoleHead, fileHead, text, 1)
         return
     end
 
@@ -302,6 +326,7 @@ local function logAt(level, ...)
     else
         flushPending()
         pending = {
+            HeaderColor = headerColor,
             LevelColor  = def.Color,
             ConsoleHead = consoleHead,
             FileHead    = fileHead,
