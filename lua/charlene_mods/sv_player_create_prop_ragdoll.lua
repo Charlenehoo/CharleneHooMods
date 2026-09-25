@@ -16,13 +16,13 @@ local ragdollToPlyMap = {}
 local function createPropRagdoll(ply)
     local model = ply:GetModel()
     if not model or not util.IsValidModel(model) then
-        log.Warn("Invalid model for player:", ply, "; model =", model)
+        log.Warn("invalid model, player =", ply, "model =", model)
         return nil
     end
 
     local ragdoll = ents.Create("prop_ragdoll")
     if not ragdoll:IsValid() then
-        log.Warn("ents.Create('prop_ragdoll') failed")
+        log.Warn("ents.Create('prop_ragdoll') returned invalid, player =", ply, "model =", model)
         return nil
     end
 
@@ -34,7 +34,7 @@ local function createPropRagdoll(ply)
 
     local physCount = ragdoll:GetPhysicsObjectCount()
     if physCount < 1 then
-        log.Warn("prop_ragdoll has no physics objects")
+        log.Warn("prop_ragdoll has no physics objects, player =", ply, "model =", model)
         ragdoll:Remove()
         return nil
     end
@@ -57,39 +57,42 @@ local function createPropRagdoll(ply)
     plyToRagdollMap[ply] = ragdoll
     ragdollToPlyMap[ragdoll] = ply
     hook.Run("CreateEntityRagdoll", ply, ragdoll)
+
+    log.Trace("prop_ragdoll created, player =", ply, "ragdoll =", ragdoll,
+        "EntIndex =", ragdoll:EntIndex(), "physCount =", physCount, "model =", model)
     return ragdoll
 end
 
 local plyMeta = FindMetaTable("Player")
 if not plyMeta then
-    log.Error("Cannot find meta table: Player")
+    log.Error("FindMetaTable('Player') failed, module aborted")
     return
 end
 
 local entMeta = FindMetaTable("Entity")
 if not entMeta then
-    log.Error("Cannot find meta table: Entity")
+    log.Error("FindMetaTable('Entity') failed, module aborted")
     return
 end
 
 ---@type fun(self: Player):Entity
 local originalGetRagdollEntity = plyMeta.GetRagdollEntity
 if not originalGetRagdollEntity then
-    log.Error("Cannot find function: Player.GetRagdollEntity")
+    log.Error("missing method Player.GetRagdollEntity, module aborted")
     return
 end
 
 ---@type fun(self: Entity):Player
 local originalGetRagdollOwner = entMeta.GetRagdollOwner
 if not originalGetRagdollOwner then
-    log.Error("Cannot find function: Entity.GetRagdollOwner")
+    log.Error("missing method Entity.GetRagdollOwner, module aborted")
     return
 end
 
 ---@type fun(self: Player)
 local originalCreateRagdoll = plyMeta.CreateRagdoll
 if not originalCreateRagdoll then
-    log.Error("Cannot find function: Player.originalCreateRagdoll")
+    log.Error("missing method Player.CreateRagdoll, module aborted")
     return
 end
 
@@ -106,7 +109,6 @@ end
 ---@param self Entity
 ---@return Player
 entMeta.GetRagdollOwner = function (self)
-    log.Trace("entMeta.GetRagdollOwner called, ragdoll =", self)
     local tracked = ragdollToPlyMap[self]
     if tracked and tracked:IsValid() then
         return tracked
@@ -116,13 +118,12 @@ end
 
 ---@param ply Player
 plyMeta.CreateRagdoll = function (ply)
-    log.Trace("plyMeta.CreateRagdoll called, ply =", ply)
     local ragdoll = createPropRagdoll(ply)
     if not ragdoll or not ragdoll:IsValid() then
-        log.Warn("custom ragdoll creation failed")
+        log.Warn("custom ragdoll creation failed, falling back to original, ply =", ply)
         return originalCreateRagdoll(ply)
     end
-    log.Trace("custom ragdoll created, EntIndex =", ragdoll:EntIndex())
+    log.Trace("custom ragdoll used, ply =", ply, "EntIndex =", ragdoll:EntIndex())
 end
 
 hook.Add("PlayerDeathThink", MODULE_NAME .. "PlayerDeathThink", function (ply)
