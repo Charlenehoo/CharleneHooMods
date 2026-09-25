@@ -52,27 +52,42 @@ local function createPropRagdoll(ply)
     end
 
     ragdoll.GetRagdollOwner = function (self)
+        log.Trace("custom GetRagdollOwner called for ragdoll: ", self,
+            ", returning ply =", ply)
         return ply
     end
     hook.Run("CreateEntityRagdoll", ply, ragdoll)
     return ragdoll
 end
 
-local meta = FindMetaTable("Player")
-if not meta then
+local plyMeta = FindMetaTable("Player")
+if not plyMeta then
     log.Error("Cannot find meta table: Player")
     return
 end
 
+local entMeta = FindMetaTable("Entity")
+if not entMeta then
+    log.Error("Cannot find meta table: Entity")
+    return
+end
+
 ---@type fun(ply: Player):Entity
-local originalGetRagdollEntity = meta.GetRagdollEntity
+local originalGetRagdollEntity = plyMeta.GetRagdollEntity
 if not originalGetRagdollEntity then
     log.Error("Cannot find function: Player.GetRagdollEntity")
     return
 end
 
+---@type fun(ragdoll: Entity):Player
+local originalGetRagdollOwner = entMeta.GetRagdollOwner
+if not originalGetRagdollOwner then
+    log.Error("Cannot find function: Entity.GetRagdollOwner")
+    return
+end
+
 ---@type fun(ply: Player)
-local originalCreateRagdoll = meta.CreateRagdoll
+local originalCreateRagdoll = plyMeta.CreateRagdoll
 if not originalCreateRagdoll then
     log.Error("Cannot find function: Player.originalCreateRagdoll")
     return
@@ -80,7 +95,7 @@ end
 
 ---@param self Player
 ---@return Entity
-meta.GetRagdollEntity = function (self)
+plyMeta.GetRagdollEntity = function (self)
     local tracked = plyToRagdollMap[self]
     if tracked and tracked:IsValid() then
         return tracked
@@ -89,12 +104,14 @@ meta.GetRagdollEntity = function (self)
 end
 
 ---@param ply Player
-meta.CreateRagdoll = function (ply)
+plyMeta.CreateRagdoll = function (ply)
+    log.Trace("plyMeta.CreateRagdoll called, ply =", ply)
     local ragdoll = createPropRagdoll(ply)
     if not ragdoll or not ragdoll:IsValid() then
-        log.Warn("  prop_ragdoll creation failed")
+        log.Warn("custom ragdoll creation failed")
         return originalCreateRagdoll(ply)
     end
+    log.Trace("custom ragdoll created, EntIndex =", ragdoll:EntIndex())
     plyToRagdollMap[ply] = ragdoll
 end
 
