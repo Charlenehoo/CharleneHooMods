@@ -26,7 +26,6 @@ local function createPropRagdoll(ply)
     ragdoll:SetModel(model)
     ragdoll:SetPos(ply:GetPos())
     ragdoll:SetAngles(ply:GetAngles())
-    ragdoll:SetOwner(ply)
     ragdoll:SetBloodColor(ply:GetBloodColor())
     ragdoll:Spawn()
 
