@@ -8,6 +8,9 @@ local MODULE_NAME = "PlayerCreatePropRagdoll"
 ---@type table<Player, Entity|nil>
 local plyToRagdollMap = {}
 
+---@type table<Entity, Player>
+local ragdollToPlyMap = {}
+
 ---@param ply Player
 ---@return Entity|nil
 local function createPropRagdoll(ply)
@@ -51,11 +54,8 @@ local function createPropRagdoll(ply)
         end
     end
 
-    ragdoll.GetRagdollOwner = function (self)
-        log.Trace("custom GetRagdollOwner called for ragdoll: ", self,
-            ", returning ply =", ply)
-        return ply
-    end
+    plyToRagdollMap[ply] = ragdoll
+    ragdollToPlyMap[ragdoll] = ply
     hook.Run("CreateEntityRagdoll", ply, ragdoll)
     return ragdoll
 end
@@ -72,21 +72,21 @@ if not entMeta then
     return
 end
 
----@type fun(ply: Player):Entity
+---@type fun(self: Player):Entity
 local originalGetRagdollEntity = plyMeta.GetRagdollEntity
 if not originalGetRagdollEntity then
     log.Error("Cannot find function: Player.GetRagdollEntity")
     return
 end
 
----@type fun(ragdoll: Entity):Player
+---@type fun(self: Entity):Player
 local originalGetRagdollOwner = entMeta.GetRagdollOwner
 if not originalGetRagdollOwner then
     log.Error("Cannot find function: Entity.GetRagdollOwner")
     return
 end
 
----@type fun(ply: Player)
+---@type fun(self: Player)
 local originalCreateRagdoll = plyMeta.CreateRagdoll
 if not originalCreateRagdoll then
     log.Error("Cannot find function: Player.originalCreateRagdoll")
@@ -103,6 +103,17 @@ plyMeta.GetRagdollEntity = function (self)
     return originalGetRagdollEntity(self)
 end
 
+---@param self Entity
+---@return Player
+entMeta.GetRagdollOwner = function (self)
+    log.Trace("entMeta.GetRagdollOwner called, ragdoll =", self)
+    local tracked = ragdollToPlyMap[self]
+    if tracked and tracked:IsValid() then
+        return tracked
+    end
+    return originalGetRagdollOwner(self)
+end
+
 ---@param ply Player
 plyMeta.CreateRagdoll = function (ply)
     log.Trace("plyMeta.CreateRagdoll called, ply =", ply)
@@ -112,10 +123,9 @@ plyMeta.CreateRagdoll = function (ply)
         return originalCreateRagdoll(ply)
     end
     log.Trace("custom ragdoll created, EntIndex =", ragdoll:EntIndex())
-    plyToRagdollMap[ply] = ragdoll
 end
 
-hook.Add("PlayerDeathThink", MODULE_NAME .. ".PlayerDeathThink", function (ply)
+hook.Add("PlayerDeathThink", MODULE_NAME .. "PlayerDeathThink", function (ply)
     local ragdoll = ply:GetRagdollEntity()
     if not IsValid(ragdoll) then return end
 
@@ -127,11 +137,20 @@ hook.Add("PlayerDeathThink", MODULE_NAME .. ".PlayerDeathThink", function (ply)
     end
 end)
 
-hook.Add("PlayerSpawn", MODULE_NAME .. ".PlayerSpawn", function (player, transition)
+hook.Add("PlayerSpawn", MODULE_NAME .. "PlayerSpawn", function (player, transition)
     if transition then return end
     plyToRagdollMap[player] = nil
 end)
 
-hook.Add("PlayerDisconnected", MODULE_NAME .. ".PlayerDisconnected", function (ply)
+hook.Add("EntityRemoved", MODULE_NAME .. "EntityRemoved", function (ent)
+    ragdollToPlyMap[ent] = nil
+end)
+
+hook.Add("PlayerDisconnected", MODULE_NAME .. "PlayerDisconnected", function (ply)
     plyToRagdollMap[ply] = nil
+    for ragdoll, owner in pairs(ragdollToPlyMap) do
+        if owner == ply then
+            ragdollToPlyMap[ragdoll] = nil
+        end
+    end
 end)
