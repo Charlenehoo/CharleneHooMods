@@ -2,70 +2,62 @@
 
 if _G._CharleneHooLog then return _G._CharleneHooLog end
 
+-- ============================================================
+-- 级别枚举：显式声明，索引即级别
+--   顺序不可乱动
+-- ============================================================
+
+---@enum LogLevel
+local LogLevel = {
+    TRACE = 1,
+    DEBUG = 2,
+    INFO  = 3,
+    WARN  = 4,
+    ERROR = 5,
+}
+
+-- ============================================================
+-- 配置（文件级闭包，外部不可改）
+-- ============================================================
+
+---@type LogLevel
+local CurrentLevel = LogLevel.TRACE -- 默认 Trace，发布时改成 WARN / ERROR
+local OutFile = nil                 -- nil = 不写文件; 相对 data/, 自动补 .txt
+local Fold = true                   -- 连续相同折叠
+local MaxTable = 3                  -- table 显示前几项
+
+-- ============================================================
+-- 级别定义表：以 LogLevel 枚举值为键
+--   Tag   - 大写短标签，控制台与折叠签名用
+--   Label - 右对齐后的显示名，文件日志用（手动对齐到最长 Tag）
+--   Color - 控制台正文颜色
+-- ============================================================
+
+---@class LevelDef
+---@field Tag string
+---@field Label string
+---@field Color Color
+
+---@type table<LogLevel, LevelDef>
+local levelDefs = {
+    [LogLevel.TRACE] = { Tag = "TRACE", Label = "TRACE", Color = Color(140, 140, 140) },
+    [LogLevel.DEBUG] = { Tag = "DEBUG", Label = "DEBUG", Color = Color(100, 200, 255) },
+    [LogLevel.INFO]  = { Tag = "INFO", Label = " INFO", Color = Color(200, 255, 200) },
+    [LogLevel.WARN]  = { Tag = "WARN", Label = " WARN", Color = Color(255, 220, 100) },
+    [LogLevel.ERROR] = { Tag = "ERROR", Label = "ERROR", Color = Color(255, 100, 100) },
+}
+
+-- ============================================================
+-- 日志对象
+-- ============================================================
+
 ---@class Log
----@field OutFile string|nil
----@field CurrentLevel integer
----@field Fold boolean
----@field MaxTable integer
----@field Level table<string, integer>
 ---@field Trace fun(...: any)
 ---@field Debug fun(...: any)
 ---@field Info fun(...: any)
 ---@field Warn fun(...: any)
 ---@field Error fun(...: any)
 local log = {}
-
--- ============================================================
--- 级别定义表：索引即级别，顺序即语义
---   Name  - 驼峰名，用于动态挂载 log.Trace / log.Debug / ...
---   Color - 控制台颜色
---   Label - 先暂存大写名，第二趟改写为对齐后显示名
--- 顺序不可乱动，log.CurrentLevel 直接与索引比较
--- ============================================================
-
----@type { Name: string, Color: Color, Label: string }[]
-local levelDefs = {
-    { Name = "Trace", Color = Color(140, 140, 140) }, -- 1
-    { Name = "Debug", Color = Color(100, 200, 255) }, -- 2
-    { Name = "Info",  Color = Color(200, 255, 200) }, -- 3
-    { Name = "Warn",  Color = Color(255, 220, 100) }, -- 4
-    { Name = "Error", Color = Color(255, 100, 100) }, -- 5
-}
-
----@type table<string, integer>
-log.Level = {}
-do
-    -- 第一趟：大写名 → Label，派生枚举 log.Level，同时求最大宽度
-    local maxNameWidth = 0
-    for level = 1, #levelDefs do
-        local def = levelDefs[level]
-        def.Label = def.Name:upper() -- 暂存大写名
-        log.Level[def.Label] = level -- 枚举字段 UPPER_CASE
-        if #def.Label > maxNameWidth then
-            maxNameWidth = #def.Label
-        end
-    end
-
-    -- 第二趟：把 Label 原地改写为对齐后的显示名
-    for level = 1, #levelDefs do
-        local def = levelDefs[level]
-        def.Label = string.rep(" ", maxNameWidth - #def.Label) .. def.Label
-    end
-end
-
--- ============================================================
--- 配置
--- ============================================================
-
-log.CurrentLevel = log.Level.TRACE -- 默认 Info
-log.OutFile = nil                  -- nil = 不写文件; 相对 data/, 自动补 .txt
-log.Fold = true                    -- 连续相同折叠
-log.MaxTable = 3                   -- table 显示前几项
-
----@return integer
-local function getCurrentLevel()
-    return log.CurrentLevel or log.Level.INFO
-end
 
 -- ============================================================
 -- 值格式化
@@ -125,7 +117,7 @@ formatValue = function (value)
     local parts = {}
     local arrayLength = #value
     if arrayLength == itemCount then
-        local limit = math.min(itemCount, log.MaxTable)
+        local limit = math.min(itemCount, MaxTable)
         for index = 1, limit do
             parts[index] = briefElement(value[index])
         end
@@ -136,11 +128,11 @@ formatValue = function (value)
     local index = 0
     for key, entryValue in pairs(value) do
         index = index + 1
-        if index > log.MaxTable then break end
+        if index > MaxTable then break end
         local keyString = (type(key) == "string") and key or ("[" .. tostring(key) .. "]")
         parts[index] = keyString .. "=" .. briefElement(entryValue)
     end
-    local tailText = itemCount > log.MaxTable and ", ..." or ""
+    local tailText = itemCount > MaxTable and ", ..." or ""
     return string.format("{%s%s} (n=%d)", table.concat(parts, ", "), tailText, itemCount)
 end
 
@@ -162,9 +154,15 @@ local function formatTime(seconds)
 end
 
 -- ============================================================
--- 领域标识：SERVER / CLIENT 均为 6 字符，天然等宽
+-- 领域标识
+--   realmName  - 完整名，文件日志用
+--   realmTag   - 小写短名 sv / cl，控制台用（与级别大写区分）
+--   realmColor - 控制台表头颜色（GMod 惯例：SERVER 蓝 / CLIENT 橙）
 -- ============================================================
-local realmLabel = SERVER and "SERVER" or "CLIENT"
+local realmName = SERVER and "SERVER" or "CLIENT"
+local realmTag = SERVER and "sv" or "cl"
+local realmColor = SERVER and Color(80, 160, 255) -- 蓝
+    or Color(255, 165, 0)                         -- 橙
 
 -- ============================================================
 -- 调用点 (跳过 C 函数 / 未知源, 应对 hook / timer 回调栈)
@@ -185,15 +183,36 @@ local function findCaller()
     return "?", 0
 end
 
+--- 控制台用的 source 截短：只留文件名，超长从头部截断
+---@param source string
+---@return string
+local function shortenSource(source)
+    local name = source:match("([^/]+)$") or source
+    name = name:gsub("%.lua$", "")
+    if #name > 24 then
+        name = "~" .. name:sub(-23)
+    end
+    return name
+end
+
 -- ============================================================
 -- 输出 (控制台 + 文件), 折叠在此处
 -- ============================================================
 
+---@class PendingEntry
+---@field LevelColor Color
+---@field ConsoleHead string
+---@field FileHead string
+---@field Text string
+---@field Signature string
+---@field Count integer
+
+---@type PendingEntry|nil
 local pending = nil
 
 ---@return string|nil
 local function getOutfilePath()
-    local path = log.OutFile
+    local path = OutFile
     if not path then return nil end
     if not path:lower():match("%.txt$") then
         path = path .. ".txt"
@@ -201,46 +220,46 @@ local function getOutfilePath()
     return path
 end
 
----@param color Color
----@param head string
+--- 控制台表头 = realmColor，正文 = levelColor
+---@param levelColor Color
+---@param consoleHead string
+---@param fileHead string
 ---@param text string
 ---@param count integer
-local function emitLine(color, head, text, count)
-    local line = head
-    if count and count > 1 then
-        line = line .. " " .. text .. " x" .. count
-    else
-        line = line .. " " .. text
-    end
+local function emitLine(levelColor, consoleHead, fileHead, text, count)
+    local suffix = (count and count > 1) and (" x" .. count) or ""
 
-    MsgC(color, head)
-    MsgC(Color(230, 230, 230),
-        (count and count > 1) and (" " .. text .. " x" .. count .. "\n")
-        or (" " .. text .. "\n"))
+    MsgC(realmColor, consoleHead)
+    MsgC(levelColor, " " .. text .. suffix .. "\n")
 
     local path = getOutfilePath()
-    if path then file.Append(path, line .. "\n") end
+    if path then file.Append(path, fileHead .. " " .. text .. suffix .. "\n") end
 end
 
 local function flushPending()
     if not pending then return end
     local currentPending = pending
     pending = nil
-    emitLine(currentPending.Color, currentPending.Head, currentPending.Text, currentPending.Count)
+    emitLine(
+        currentPending.LevelColor,
+        currentPending.ConsoleHead,
+        currentPending.FileHead,
+        currentPending.Text,
+        currentPending.Count
+    )
 end
 
 -- ============================================================
 -- 日志写入公共逻辑
 -- ============================================================
 
----@param level integer
+---@param level LogLevel
 ---@param ... any
 local function logAt(level, ...)
-    if level < getCurrentLevel() then return end
+    if level < CurrentLevel then return end
 
     local def = levelDefs[level]
     if not def then return end
-    local color = def.Color
 
     local count = select("#", ...)
     local parts = {}
@@ -251,43 +270,58 @@ local function logAt(level, ...)
     local text = table.concat(parts, " ")
 
     local source, line = findCaller()
-    local head = string.format("[%s][%05d][%s][%s][%s][%s:%d]",
+    local shortSource = shortenSource(source)
+    local tick = engine.TickCount() % 100000 -- 66 tick/s 下覆盖 ≈ 25 分钟
+
+    -- 控制台 Header：时间 | 级别 | realm | 来源:行 | Tick
+    --   表头颜色 = realm，正文颜色 = 级别
+    local consoleHead = string.format("%s|%s|%s|%s:%d|%05d",
+        formatTime(CurTime()),
+        def.Tag,
+        realmTag,
+        shortSource, line,
+        tick)
+
+    -- 文件 Header：SysTime | CurTime | 级别 | Realm | 来源:行 | Tick
+    local fileHead = string.format("[%s][%s][%s][%s][%s:%d][%05d]",
         formatTime(SysTime()),
-        engine.TickCount() % 100000, -- 66 tick/s 下覆盖 ≈ 25 分钟
         formatTime(CurTime()),
         def.Label,
-        realmLabel,
-        source, line)
+        realmName,
+        source, line,
+        tick)
 
-    if not log.Fold then
-        emitLine(color, head, text, 1)
+    if not Fold then
+        emitLine(def.Color, consoleHead, fileHead, text, 1)
         return
     end
 
-    -- 用 def.Name（驼峰）作签名，天然按级别隔离
-    local signature = def.Name .. "\0" .. source .. ":" .. line .. "\0" .. text
+    -- 折叠签名用完整 source，避免同名文件误折叠；用 def.Tag 天然按级别隔离
+    local signature = def.Tag .. "\0" .. source .. ":" .. line .. "\0" .. text
     if pending and pending.Signature == signature then
         pending.Count = pending.Count + 1
     else
         flushPending()
         pending = {
-            Head = head,
-            Text = text,
-            Color = color,
-            Signature = signature,
-            Count = 1,
+            LevelColor  = def.Color,
+            ConsoleHead = consoleHead,
+            FileHead    = fileHead,
+            Text        = text,
+            Signature   = signature,
+            Count       = 1,
         }
     end
 end
 
 -- ============================================================
--- 动态挂载各级别函数：log.Trace / log.Debug / log.Info / log.Warn / log.Error
+-- 展平挂载各级别函数：log.Trace / log.Debug / log.Info / log.Warn / log.Error
 -- ============================================================
 
-for level = 1, #levelDefs do
-    local def = levelDefs[level]
-    log[def.Name] = function (...) logAt(level, ...) end
-end
+log.Trace = function (...) logAt(LogLevel.TRACE, ...) end
+log.Debug = function (...) logAt(LogLevel.DEBUG, ...) end
+log.Info = function (...) logAt(LogLevel.INFO, ...) end
+log.Warn = function (...) logAt(LogLevel.WARN, ...) end
+log.Error = function (...) logAt(LogLevel.ERROR, ...) end
 
 -- 定时 flush, 让折叠计数能看到
 timer.Create("CharleneHooLogAutoSave", 1.5, 0, flushPending)
