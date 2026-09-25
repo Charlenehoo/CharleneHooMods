@@ -26,10 +26,20 @@ local OutFile = nil                 -- nil = 不写文件; 相对 data/, 自动�
 local Fold = true                   -- 连续相同折叠
 local MaxTable = 3                  -- table 显示前几项
 
+-- 领域标识（GMod 惯例：SERVER 蓝 / CLIENT 橙）
+--   realmName  - 完整名，文件日志用
+--   realmTag   - 小写短名 sv / cl，控制台用（与级别大写区分）
+--   realmColor - 控制台表头颜色
+local realmName = SERVER and "SERVER" or "CLIENT"
+local realmTag = SERVER and "sv" or "cl"
+local realmColor = SERVER and Color(80, 160, 255) -- 蓝
+    or Color(255, 165, 0)                         -- 橙
+
 -- ============================================================
 -- 级别定义表：以 LogLevel 枚举值为键
 --   Tag   - 大写短标签，控制台与折叠签名用
---   Label - 右对齐后的显示名，文件日志用（手动对齐到最长 Tag）
+--   Label - 文件日志显示名，人工右对齐到 5 字符
+--           （INFO / WARN 只有 4 字符，手动补前导空格）
 --   Color - 控制台正文颜色
 -- ============================================================
 
@@ -152,17 +162,6 @@ local function formatTime(seconds)
         totalSeconds % 60,                  -- 秒：  模 60 → 2 位
         totalMilliseconds % 1000)           -- 毫秒：模 1000 → 3 位
 end
-
--- ============================================================
--- 领域标识
---   realmName  - 完整名，文件日志用
---   realmTag   - 小写短名 sv / cl，控制台用（与级别大写区分）
---   realmColor - 控制台表头颜色（GMod 惯例：SERVER 蓝 / CLIENT 橙）
--- ============================================================
-local realmName = SERVER and "SERVER" or "CLIENT"
-local realmTag = SERVER and "sv" or "cl"
-local realmColor = SERVER and Color(80, 160, 255) -- 蓝
-    or Color(255, 165, 0)                         -- 橙
 
 -- ============================================================
 -- 调用点 (跳过 C 函数 / 未知源, 应对 hook / timer 回调栈)
