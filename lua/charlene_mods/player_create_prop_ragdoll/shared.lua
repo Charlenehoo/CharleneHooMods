@@ -30,12 +30,12 @@ if not originalGetRagdollOwner then
     return nil
 end
 
-local Shared = {
+local shared = {
     MODULE_NAME   = MODULE_NAME,
     NW2KeyRagdoll = MODULE_NAME .. "Ragdoll",
     NW2KeyOwner   = MODULE_NAME .. "Owner",
 }
-_G[MODULE_NAME] = Shared
+_G[MODULE_NAME] = shared
 
 ---@param self Player
 ---@return Entity

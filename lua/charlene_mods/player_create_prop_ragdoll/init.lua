@@ -1,13 +1,13 @@
 -- lua\charlene_mods\player_create_prop_ragdoll\init.lua
 AddCSLuaFile("shared.lua")
-local Shared = include("shared.lua")
+local shared = include("shared.lua")
 
 ---@type Log
 local log = include("charlene_mods/log.lua")
 
-local MODULE_NAME = (Shared and Shared.MODULE_NAME) or "PlayerCreatePropRagdoll"
+local MODULE_NAME = (shared and shared.MODULE_NAME) or "PlayerCreatePropRagdoll"
 
-if not Shared then
+if not shared then
     log.Error(MODULE_NAME .. ": shared module not loaded, module aborted")
     return
 end
@@ -107,8 +107,8 @@ plyMeta.CreateRagdoll = function (ply)
         log.Warn("custom ragdoll creation failed, falling back to original, ply =", ply)
         return originalCreateRagdoll(ply)
     end
-    ply:SetNW2Entity(Shared.NW2KeyRagdoll, ragdoll)
-    ragdoll:SetNW2Entity(Shared.NW2KeyOwner, ply)
+    ply:SetNW2Entity(shared.NW2KeyRagdoll, ragdoll)
+    ragdoll:SetNW2Entity(shared.NW2KeyOwner, ply)
     hook.Run("CreateEntityRagdoll", ply, ragdoll)
     log.Trace("custom ragdoll used, ply =", ply, "EntIndex =", ragdoll:EntIndex())
     return ragdoll
@@ -128,5 +128,5 @@ end)
 
 hook.Add("PlayerSpawn", MODULE_NAME .. "PlayerSpawn", function (player, transition)
     if transition then return end
-    player:SetNW2Entity(Shared.NW2KeyRagdoll, NULL)
+    player:SetNW2Entity(shared.NW2KeyRagdoll, NULL)
 end)
