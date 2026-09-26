@@ -69,7 +69,7 @@ end
 ---@return Entity|nil
 local function createPropRagdoll(ply)
     local ragdoll = ents.Create("prop_ragdoll")
-    if not ragdoll:IsValid() then
+    if not IsValid(ragdoll) then
         log.Warn("ents.Create('prop_ragdoll') returned invalid, player =", ply, "model =", model)
         return nil
     end
@@ -105,6 +105,7 @@ plyMeta.CreateRagdoll = function (ply)
     ragdoll:SetNW2Entity(Shared.NW2KeyOwner, ply)
     hook.Run("CreateEntityRagdoll", ply, ragdoll)
     log.Trace("custom ragdoll used, ply =", ply, "EntIndex =", ragdoll:EntIndex())
+    return ragdoll
 end
 
 hook.Add("PlayerDeathThink", MODULE_NAME .. "PlayerDeathThink", function (ply)
