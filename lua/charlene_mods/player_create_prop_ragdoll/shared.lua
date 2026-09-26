@@ -30,11 +30,15 @@ if not originalGetRagdollOwner then
     return nil
 end
 
-local shared = {
-    MODULE_NAME   = MODULE_NAME,
-    NW2KeyRagdoll = MODULE_NAME .. "Ragdoll",
-    NW2KeyOwner   = MODULE_NAME .. "Owner",
-}
+---@class PlayerCreatePropRagdollShared
+---@field MODULE_NAME string
+---@field NW2_KEY_RAGDOLL string
+---@field NW2_KEY_OWNER string
+local shared = {}
+shared.MODULE_NAME = MODULE_NAME
+shared.NW2_KEY_RAGDOLL = MODULE_NAME .. "Ragdoll"
+shared.NW2_KEY_OWNER = MODULE_NAME .. "Owner"
+
 _G[MODULE_NAME] = shared
 
 ---@param self Player
