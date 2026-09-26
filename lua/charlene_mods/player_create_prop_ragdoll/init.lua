@@ -109,7 +109,7 @@ plyMeta.CreateRagdoll = function (ply)
     ply:SetNW2Entity(shared.NW2_KEY_RAGDOLL, ragdoll)
     ragdoll:SetNW2Entity(shared.NW2_KEY_OWNER, ply)
     hook.Run("CreateEntityRagdoll", ply, ragdoll)
-    log.Trace("custom ragdoll used, ply =", ply, "EntIndex =", ragdoll:EntIndex())
+    log.Trace("custom ragdoll created, ply =", ply, "ragdoll =", ragdoll)
     return ragdoll
 end
 
