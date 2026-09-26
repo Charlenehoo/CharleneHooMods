@@ -12,12 +12,11 @@ TOOL.Name = "Cast Decal"
 
 ---@param tr TraceResult
 function TOOL:LeftClick(tr)
-    if CLIENT then
-        util.Decal("Cross", tr.StartPos, tr.HitPos, self:GetOwner())
+    util.Decal("Cross", tr.StartPos, tr.HitPos, self:GetOwner())
 
-        local dm = util.DecalMaterial("Cross")
-        print(dm)
-    end
+    local dm = util.DecalMaterial("Cross")
+    print(dm)
+    return true
 end
 
 ---@param tr TraceResult
