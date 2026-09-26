@@ -10,7 +10,6 @@ TOOL.Name = "Cast Decal"
 --     { dir = "materials/animated_blood/wounds/blood12_mats", animStopTime = 4.6 },
 -- })
 
----comment
 ---@param tr TraceResult
 function TOOL:LeftClick(tr)
     if CLIENT then
@@ -24,5 +23,15 @@ function TOOL:LeftClick(tr)
         local bloodmat = ANIMATED_WOUNDS[folderDir][vmtKey]
         util.DecalEx(bloodmat.mat, ent, pos, normal, white, radius, radius)
         return true
+    end
+end
+
+---@param tr TraceResult
+function TOOL:RightClick(tr)
+    if SERVER then
+        local e = ents.Create("prop_physics")
+        e:SetModel("editor/cube_small.mdl")
+        e:SetPos(tr.HitPos)
+        e:Spawn()
     end
 end
