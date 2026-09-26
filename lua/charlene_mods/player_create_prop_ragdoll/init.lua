@@ -31,7 +31,7 @@ local MODULE_NAME = "PlayerCreatePropRagdoll"
 local function syncPos(ply, ragdoll)
     local physCount = ragdoll:GetPhysicsObjectCount()
     if physCount < 1 then
-        log.Warn("prop_ragdoll has no physics objects, player =", ply, "model =", model)
+        log.Warn("prop_ragdoll has no physics objects, player =", ply)
         return false
     end
 
@@ -70,7 +70,7 @@ end
 local function createPropRagdoll(ply)
     local ragdoll = ents.Create("prop_ragdoll")
     if not IsValid(ragdoll) then
-        log.Warn("ents.Create('prop_ragdoll') returned invalid, player =", ply, "model =", model)
+        log.Warn("ents.Create('prop_ragdoll') returned invalid, player =", ply)
         return nil
     end
 
