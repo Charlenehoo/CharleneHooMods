@@ -96,8 +96,6 @@ local function createPropRagdoll(ply)
         return nil
     end
 
-    log.Trace("created, player =", ply, "ragdoll =", ragdoll,
-        "EntIndex =", ragdoll:EntIndex(), "physCount =", physCount, "model =", model)
     return ragdoll
 end
 
