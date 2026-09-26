@@ -8,25 +8,25 @@ local log = include("charlene_mods/log.lua")
 
 local plyMeta = FindMetaTable("Player")
 if not plyMeta then
-    log.Error("FindMetaTable('Player') failed, shared module aborted")
+    log.Error(MODULE_NAME .. ": FindMetaTable('Player') failed, shared module aborted")
     return nil
 end
 
 local originalGetRagdollEntity = plyMeta.GetRagdollEntity
 if not originalGetRagdollEntity then
-    log.Error("Missing method Player.GetRagdollEntity, module aborted")
+    log.Error(MODULE_NAME .. ": Missing method Player.GetRagdollEntity, module aborted")
     return nil
 end
 
 local entMeta = FindMetaTable("Entity")
 if not entMeta then
-    log.Error("FindMetaTable('Entity') failed, shared module aborted")
+    log.Error(MODULE_NAME .. ": FindMetaTable('Entity') failed, shared module aborted")
     return nil
 end
 
 local originalGetRagdollOwner = entMeta.GetRagdollOwner
 if not originalGetRagdollOwner then
-    log.Error("Missing method Entity.GetRagdollOwner, module aborted")
+    log.Error(MODULE_NAME .. ": Missing method Entity.GetRagdollOwner, module aborted")
     return nil
 end
 
