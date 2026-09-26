@@ -5,24 +5,24 @@ local Shared = include("shared.lua")
 ---@type Log
 local log = include("charlene_mods/log.lua")
 
+local MODULE_NAME = (Shared and Shared.MODULE_NAME) or "PlayerCreatePropRagdoll"
+
 if not Shared then
-    log.Error("shared module not loaded, module aborted")
+    log.Error(MODULE_NAME .. ": shared module not loaded, module aborted")
     return
 end
 
 local plyMeta = FindMetaTable("Player")
 if not plyMeta then
-    log.Error("FindMetaTable('Player') failed, module aborted")
+    log.Error(MODULE_NAME .. ": FindMetaTable('Player') failed, module aborted")
     return
 end
 
 local originalCreateRagdoll = plyMeta.CreateRagdoll
 if not originalCreateRagdoll then
-    log.Error("missing method Player.CreateRagdoll, module aborted")
+    log.Error(MODULE_NAME .. ": missing method Player.CreateRagdoll, module aborted")
     return
 end
-
-local MODULE_NAME = "PlayerCreatePropRagdoll"
 
 ---Sync the pose of the ragdoll to the given player
 ---@param ply Player
@@ -108,7 +108,7 @@ plyMeta.CreateRagdoll = function (ply)
     return ragdoll
 end
 
-hook.Add("PlayerDeathThink", MODULE_NAME .. "PlayerDeathThink", function (ply)
+hook.Add("PostPlayerDeath", MODULE_NAME .. "PostPlayerDeath", function (ply)
     local ragdoll = ply:GetRagdollEntity()
     if not IsValid(ragdoll) then return end
 

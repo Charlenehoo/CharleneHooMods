@@ -31,6 +31,7 @@ if not originalGetRagdollOwner then
 end
 
 local Shared = {
+    MODULE_NAME   = MODULE_NAME,
     NW2KeyRagdoll = MODULE_NAME .. "Ragdoll",
     NW2KeyOwner   = MODULE_NAME .. "Owner",
 }
