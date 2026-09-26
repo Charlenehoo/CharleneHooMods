@@ -31,7 +31,7 @@ util.DecalEx = function (mat, ent, pos, normal, color, w, h)
 
         -- 2) normal 只需要方向旋转（不能加平移），做一次 direction 变换
         local localDir = ply:WorldToLocal(pos + normal) - localPos
-        local worldNormal = body:LocalToWorld(localDir) - body:LocalToWorld(Vector(0, 0, 0))
+        local worldNormal = body:LocalToWorld(localDir) - body:LocalToWorld(vector_origin)
 
         ent = body
         pos = worldPos
