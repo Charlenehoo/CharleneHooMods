@@ -13,16 +13,10 @@ TOOL.Name = "Cast Decal"
 ---@param tr TraceResult
 function TOOL:LeftClick(tr)
     if CLIENT then
-        local pos = tr.HitPos
-        local normal = tr.HitNormal
-        local ent = tr.Entity
-        if not IsValid(ent) then return false end
-        local folderDir = "materials/animated_blood/wounds/blood1_mats"
-        local vmtKey = 1
-        local radius = 32
-        local bloodmat = ANIMATED_WOUNDS[folderDir][vmtKey]
-        util.DecalEx(bloodmat.mat, ent, pos, normal, white, radius, radius)
-        return true
+        util.Decal("Cross", tr.StartPos, tr.HitPos, self:GetOwner())
+
+        local dm = util.DecalMaterial("Cross")
+        print(dm)
     end
 end
 
@@ -30,7 +24,7 @@ end
 function TOOL:RightClick(tr)
     if SERVER then
         local e = ents.Create("prop_physics")
-        e:SetModel("editor/cube_small.mdl")
+        e:SetModel("models/hunter/blocks/cube1x1x1.mdl")
         e:SetPos(tr.HitPos)
         e:Spawn()
     end
