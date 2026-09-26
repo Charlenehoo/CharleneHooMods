@@ -1,1 +1,1 @@
-include("charlene_mods/cl_first_person_body_blood_decal.lua")
+include("charlene_mods/first_person_body_blood_decal/cl_init.lua")

@@ -11,5 +11,9 @@ local shared = {}
 shared.MODULE_NAME = MODULE_NAME
 shared.NET_CLEAR_DECALS = MODULE_NAME .. "ClearDecals"
 
+if SERVER then
+    util.AddNetworkString(shared.NET_CLEAR_DECALS)
+end
+
 _G[MODULE_NAME] = shared
 return shared
