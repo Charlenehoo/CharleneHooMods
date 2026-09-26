@@ -44,7 +44,7 @@ _G[MODULE_NAME] = shared
 ---@param self Player
 ---@return Entity
 plyMeta.GetRagdollEntity = function (self)
-    local ragdoll = self:GetNW2Entity(Shared.NW2KeyRagdoll)
+    local ragdoll = self:GetNW2Entity(shared.NW2_KEY_RAGDOLL)
     if IsValid(ragdoll) then return ragdoll end
     return originalGetRagdollEntity(self)
 end
@@ -52,9 +52,9 @@ end
 ---@param self Entity
 ---@return Player
 entMeta.GetRagdollOwner = function (self)
-    local ply = self:GetNW2Entity(Shared.NW2KeyOwner)
+    local ply = self:GetNW2Entity(shared.NW2_KEY_OWNER)
     if IsValid(ply) then return ply end
     return originalGetRagdollOwner(self)
 end
 
-return Shared
+return shared
