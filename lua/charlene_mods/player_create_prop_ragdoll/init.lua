@@ -51,6 +51,14 @@ local function syncPos(ply, ragdoll)
     return true
 end
 
+---@param ply Player
+---@param ragdoll Entity
+local function syncBaseAttrs(ply, ragdoll)
+    ragdoll:SetPos(ply:GetPos())
+    ragdoll:SetAngles(ply:GetAngles())
+    ragdoll:SetBloodColor(ply:GetBloodColor())
+end
+
 ---Sync the model of the ragdoll to the given player
 ---@param ply Player
 ---@param ragdoll Entity
@@ -79,9 +87,7 @@ local function createPropRagdoll(ply)
         return nil
     end
 
-    ragdoll:SetPos(ply:GetPos())
-    ragdoll:SetAngles(ply:GetAngles())
-    ragdoll:SetBloodColor(ply:GetBloodColor())
+    syncBaseAttrs(ply, ragdoll)
     ragdoll:Spawn()
 
     if not syncPos(ply, ragdoll) then

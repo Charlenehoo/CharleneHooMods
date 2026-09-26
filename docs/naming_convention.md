@@ -47,7 +47,3 @@
 ## 领域事件
 
 - PascalCase, 可以随便加入前缀后缀, 比如 CADOnRagdollCreated
-
-## Hook ID
-
-- `ADDON_NAME .. "_" .. MODULE_NAME .. "_" .. EVENT`, 此处 EVENT 可以是引擎事件, 也可以是领域事件, 领域事件的前缀后缀和这里的拼接无关
