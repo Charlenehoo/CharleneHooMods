@@ -25,16 +25,27 @@ if not originalCreateRagdoll then
     return
 end
 
----Sync the pose of the ragdoll to the given player
 ---@param ply Player
 ---@param ragdoll Entity
 ---@return boolean ok
-local function syncPos(ply, ragdoll)
+local function synAttrsAfterSpawn(ply, ragdoll)
+    ragdoll:SetBloodColor(ply:GetBloodColor())
+    ragdoll:SetSkin(ply:GetSkin())
+
+    local bodyGroupCount = ply:GetNumBodyGroups()
+    if bodyGroupCount > 0 then
+        for bodyGroupID = 0, bodyGroupCount - 1 do
+            ragdoll:SetBodygroup(bodyGroupID, ply:GetBodygroup(bodyGroupID))
+        end
+    end
+
     local physCount = ragdoll:GetPhysicsObjectCount()
     if physCount < 1 then
         log.Warn("prop_ragdoll has no physics objects, player =", ply)
         return false
     end
+
+    local plyVelocity = ply:GetVelocity()
 
     for physNum = 0, physCount - 1 do
         local boneID = ragdoll:TranslatePhysBoneToBone(physNum)
@@ -44,6 +55,7 @@ local function syncPos(ply, ragdoll)
             if bonePos and phys:IsValid() then
                 phys:SetPos(bonePos, true)
                 phys:SetAngles(boneAng)
+                phys:SetVelocity(plyVelocity)
                 phys:EnableMotion(true)
                 phys:Wake()
             end
@@ -54,23 +66,16 @@ end
 
 ---@param ply Player
 ---@param ragdoll Entity
-local function syncBaseAttrs(ply, ragdoll)
-    ragdoll:SetPos(ply:GetPos())
-    ragdoll:SetAngles(ply:GetAngles())
-    ragdoll:SetBloodColor(ply:GetBloodColor())
-end
-
----Sync the model of the ragdoll to the given player
----@param ply Player
----@param ragdoll Entity
 ---@return boolean ok
-local function syncModel(ply, ragdoll)
+local function synAttrsBeforeSpawn(ply, ragdoll)
     local model = ply:GetModel()
     if not model or not util.IsValidModel(model) then
         log.Warn("invalid model, player =", ply, "model =", model)
         return false
     end
     ragdoll:SetModel(model)
+    ragdoll:SetPos(ply:GetPos())
+    ragdoll:SetAngles(ply:GetAngles())
     return true
 end
 
@@ -82,20 +87,15 @@ local function createPropRagdoll(ply)
         log.Warn("ents.Create('prop_ragdoll') returned invalid, player =", ply)
         return nil
     end
-
-    if not syncModel(ply, ragdoll) then
+    if not synAttrsBeforeSpawn(ply, ragdoll) then
         ragdoll:Remove()
         return nil
     end
-
-    syncBaseAttrs(ply, ragdoll)
     ragdoll:Spawn()
-
-    if not syncPos(ply, ragdoll) then
+    if not synAttrsAfterSpawn(ply, ragdoll) then
         ragdoll:Remove()
         return nil
     end
-
     return ragdoll
 end
 
@@ -108,22 +108,12 @@ plyMeta.CreateRagdoll = function (ply)
     end
     ply:SetNW2Entity(shared.NW2_KEY_RAGDOLL, ragdoll)
     ragdoll:SetNW2Entity(shared.NW2_KEY_OWNER, ply)
+    ply:Spectate(OBS_MODE_CHASE)
+    ply:SpectateEntity(ragdoll)
     hook.Run("CreateEntityRagdoll", ply, ragdoll)
     log.Trace("custom ragdoll created, ply =", ply, "ragdoll =", ragdoll)
     return ragdoll
 end
-
-hook.Add("PostPlayerDeath", MODULE_NAME .. "PostPlayerDeath", function (ply)
-    local ragdoll = ply:GetRagdollEntity()
-    if not IsValid(ragdoll) then return end
-
-    if ply:GetObserverMode() ~= OBS_MODE_CHASE then
-        ply:Spectate(OBS_MODE_CHASE)
-    end
-    if ply:GetObserverTarget() ~= ragdoll then
-        ply:SpectateEntity(ragdoll)
-    end
-end)
 
 hook.Add("PlayerSpawn", MODULE_NAME .. "PlayerSpawn", function (player, transition)
     if transition then return end
